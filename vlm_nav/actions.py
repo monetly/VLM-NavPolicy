@@ -93,8 +93,20 @@ def _tip_xy_from_motion(
     half_hfov_tan = max(1e-6, math.tan(math.radians(hfov_deg * 0.5)))
     tip_x = 0.5 + 0.5 * (math.tan(yaw_rad) / half_hfov_tan)
 
-    # We only care about x here; ground_overlay determines dynamic tip_y (length).
-    return float(min(max(tip_x, 0.02), 0.98)), 0.0
+    # Perspective depth for visual length:
+    # A physical circle on the ground projects visually to a flattened ellipse.
+    # We scale the length by the physical travel distance and cos(yaw).
+    travel_m = max(0.0, float(forward_steps) * float(forward_step_m))
+    if travel_m > 0.0:
+        # Scale the visual height proportionally to forward step size.
+        # Calibrated so 0.3m step -> drops tip_y roughly to ~0.75 image height, 
+        # i.e., 25% of the image from the bottom.
+        base_dy = min(0.8, travel_m * 0.8)
+        tip_y = 0.999 - (base_dy * math.cos(yaw_rad))
+    else:
+        tip_y = 0.98
+
+    return float(min(max(tip_x, 0.02), 0.98)), float(max(0.05, min(tip_y, 0.98)))
 
 
 def recompute_tips(

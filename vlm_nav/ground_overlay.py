@@ -79,11 +79,10 @@ def render_ground_overlay(
 
     for action in actions:
         # Use the physically precise horizontal projection tip_x
-        tip_x_norm = action.tip_xy_norm[0]
-        tip_x = tip_x_norm * w
+        tip_x = action.tip_xy_norm[0] * w
         
-        # Use a fixed 2D length from the bottom of the screen to form the fan
-        tip_y = origin_y - traj_len
+        # Use the perspective-aware projected y-coordinate
+        tip_y = action.tip_xy_norm[1] * h
 
         margin = anchor_r + 4
         tip_x = max(margin, min(w - margin, tip_x))
