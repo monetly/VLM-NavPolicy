@@ -108,12 +108,18 @@ def _tip_xy_from_motion(
     origin_y = 1.15
     origin_x = 0.5
 
+    # A 0.3m or 0.4m step at camera height 0.6m is entirely below the bottom edge of the image
+    # (The nearest visible ground is ~0.97m away).
+    # To provide the VLM with meaningful visual trajectories, we project a "conceptual" ray 
+    # that is longer than the physical step, e.g., 2.5 meters, into the image.
     travel_m = max(0.0, float(forward_steps) * float(forward_step_m))
-    if travel_m > 0.0:
-        # Distance to tip is `travel_m`
-        # tan(theta_tip) = camera_height_m / travel_m
-        if travel_m > 1e-4:
-            theta_tip_tan = camera_height_m / travel_m
+    visual_ray_length_m = max(2.5, travel_m * 3.0)
+
+    if visual_ray_length_m > 0.0:
+        # Distance to tip in depth Z
+        z_tip = visual_ray_length_m * math.cos(yaw_rad)
+        if z_tip > 1e-4:
+            theta_tip_tan = camera_height_m / z_tip
             # Assuming square pixels, vfov relates to hfov by aspect ratio.
             # But normally we can approximate half_vfov_tan ~ half_hfov_tan * 0.75 (for 4:3)
             half_vfov_tan = half_hfov_tan * 0.75
