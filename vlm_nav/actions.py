@@ -184,7 +184,7 @@ def to_habitat_primitives(primitive_actions: Tuple[str, ...]) -> Tuple[str, ...]
 
 def option_to_primitives(option_id: str) -> Tuple[str, ...]:
     """Resolve lettered option id → primitive action sequence."""
-    macro = OPTION_TO_MACRO.get(str(option_id).strip().upper())
+    macro = OPTION_TO_MACRO.get(str(option_id).strip())
     if macro is None:
         raise KeyError(f"Unknown option id: {option_id!r}")
     return macro.primitive_actions
