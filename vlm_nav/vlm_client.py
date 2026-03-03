@@ -220,10 +220,10 @@ class VLMScorer:
             },
             "n_predict": 1,
             "temperature": temp,
-            "top_k": top_k,
-            "top_p": top_p,
+            "top_k": 0,
+            "top_p": 1.0,
             "grammar": grammar,
-            "n_probs": self.cfg.n_probs,
+            "n_probs": 50,
             "post_sampling_probs": True,   # ← grammar-constrained probs
             "cache_prompt": False,
             "seed": self._next_seed(),
