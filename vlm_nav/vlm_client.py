@@ -224,6 +224,7 @@ class VLMScorer:
             "top_p": 1.0,
             "grammar": grammar,
             "n_probs": 50,
+            "logit_bias": [[108, 100.0], [106, 100.0], [105, 100.0], [99, 100.0], [107, 100.0]],
             "post_sampling_probs": True,   # ← grammar-constrained probs
             "cache_prompt": False,
             "seed": self._next_seed(),
