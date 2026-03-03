@@ -51,15 +51,15 @@ _DIRECTION_SYSTEM = (
     "to avoid obstacles and reach the next area."
 )
 _DIRECTION_USER = (
-    "The fan-shaped trajectories on the ground represent 5 candidate local headings "
+    "The trajectories on the ground represent 5 candidate local headings "
     "for the robot's next move. The letters at the end of each trajectory "
-    "(A, B, C, D, E) label each option.\n\n"
+    "(L, l, F, r, R) label each option (leftmost to rightmost).\n\n"
     "Crucial Safety Rules:\n"
     "1. Pay special attention to the lower part of the image (the ground right in front of the robot).\n"
     "2. Strictly avoid any direction where the trajectory touches or crosses obstacles like furniture legs, walls, or debris at the ground level.\n"
     "3. Examine the physical boundaries of doorframes, walls, and obstacles ahead.\n\n"
     "Select the heading that lets the robot pass through most safely without collision.\n"
-    "Output exactly one uppercase letter corresponding to the safest direction."
+    "Output exactly one assigned letter corresponding to the safest direction."
 )
 
 
@@ -251,13 +251,13 @@ class VLMScorer:
 
         items = self._top_prob_items(rj)
         for item in items:
-            tok = str(item.get("token", "")).strip().upper()
+            tok = str(item.get("token", "")).strip()
             if tok in valid_ids:
                 probs[tok] += self._item_prob(item)
 
         # If top_probs yielded nothing, use the content token as last resort.
         if sum(probs.values()) <= 1e-8:
-            content = str(rj.get("content", "")).strip().upper()
+            content = str(rj.get("content", "")).strip()
             if content in valid_ids:
                 # Uniform floor + small boost for selected.
                 for oid in valid_ids:
