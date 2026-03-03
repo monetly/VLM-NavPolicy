@@ -54,16 +54,16 @@ _DIRECTION_USER = (
     "The 5 yellow trajectory lines on the ground (from leftmost to rightmost) represent the exact physical paths the robot can take for its next move. "
     "The solid dot at the end of each line marks the precise location the robot will physically reach and stand on after taking that action.\n\n"
     "You must choose the safest path and output exactly one corresponding symbol:\n"
-    "- Output '°' for the 1st line (Leftmost turn)\n"
-    "- Output '®' for the 2nd line (Slight left turn)\n"
-    "- Output '¬' for the 3rd line (Straight Forward)\n"
-    "- Output '¦' for the 4th line (Slight right turn)\n"
-    "- Output '¯' for the 5th line (Rightmost turn)\n\n"
+    "- Output '±' for the 1st line (Leftmost turn)\n"
+    "- Output '¶' for the 2nd line (Slight left turn)\n"
+    "- Output 'µ' for the 3rd line (Straight Forward)\n"
+    "- Output '¨' for the 4th line (Slight right turn)\n"
+    "- Output '¦' for the 5th line (Rightmost turn)\n\n"
     "Crucial Collision Rules:\n"
     "1. Check the ENTIRE line: If the trajectory line crosses or touches ANY obstacle (furniture legs, walls, debris) on the ground, the robot will collide while moving.\n"
     "2. Check the END POINT: If the solid dot at the tip of the line lands on or inside an obstacle, the robot will crash into it at the end of the step.\n"
     "3. Only select a path where BOTH the entire line and its end point lie completely on clear, open, walkable floor.\n\n"
-    "Output exactly one assigned symbol (°, ®, ¬, ¦, or ¯) corresponding to the safest trajectory."
+    "Output exactly one assigned symbol (±, ¶, µ, ¨, or ¦) corresponding to the safest trajectory."
 )
 
 
@@ -224,7 +224,6 @@ class VLMScorer:
             "top_p": 1.0,
             "grammar": grammar,
             "n_probs": 50,
-            "logit_bias": [[11616, 0.1041], [11909, 5.8754], [82093, 4.7473], [64621, 9.4533], [33985, 2.4386]],
             "post_sampling_probs": True,   # ← grammar-constrained probs
             "cache_prompt": False,
             "seed": self._next_seed(),

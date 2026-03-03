@@ -23,31 +23,31 @@ class MacroAction:
 
 MACRO_ACTIONS: Tuple[MacroAction, ...] = (
     MacroAction(
-        option_id="°",
+        option_id="±",
         action_name="turn_left_twice_then_forward",
         primitive_actions=("turn_left", "turn_left", "move_forward"),
         tip_xy_norm=(0.12, 0.82),
     ),
     MacroAction(
-        option_id="®",
+        option_id="¶",
         action_name="turn_left_then_forward",
         primitive_actions=("turn_left", "move_forward"),
         tip_xy_norm=(0.30, 0.58),
     ),
     MacroAction(
-        option_id="¬",
+        option_id="µ",
         action_name="forward",
         primitive_actions=("move_forward",),
         tip_xy_norm=(0.50, 0.52),
     ),
     MacroAction(
-        option_id="¦",
+        option_id="¨",
         action_name="turn_right_then_forward",
         primitive_actions=("turn_right", "move_forward"),
         tip_xy_norm=(0.70, 0.58),
     ),
     MacroAction(
-        option_id="¯",
+        option_id="¦",
         action_name="turn_right_twice_then_forward",
         primitive_actions=("turn_right", "turn_right", "move_forward"),
         tip_xy_norm=(0.88, 0.82),
@@ -113,7 +113,8 @@ def _tip_xy_from_motion(
     # To provide the VLM with meaningful visual trajectories, we project a "conceptual" ray 
     # that is longer than the physical step, e.g., 2.5 meters, into the image.
     travel_m = max(0.0, float(forward_steps) * float(forward_step_m))
-    visual_ray_length_m = max(0.2, travel_m * 3.0)
+    # visual_ray_length_m = max(0.2, travel_m * 3.0)
+    visual_ray_length_m = max(0.2, travel_m * 1.0)
 
     if visual_ray_length_m > 0.0:
         # Distance to tip in depth Z
