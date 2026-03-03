@@ -51,15 +51,19 @@ _DIRECTION_SYSTEM = (
     "to avoid obstacles and reach the next area."
 )
 _DIRECTION_USER = (
-    "The trajectories on the ground represent 5 candidate local headings "
-    "for the robot's next move. The symbols at the end of each trajectory "
-    "(°, ®, ¬, ¦, ¯) label each option (leftmost to rightmost).\n\n"
-    "Crucial Safety Rules:\n"
-    "1. Pay special attention to the lower part of the image (the ground right in front of the robot).\n"
-    "2. Strictly avoid any direction where the trajectory touches or crosses obstacles like furniture legs, walls, or debris at the ground level.\n"
-    "3. Examine the physical boundaries of doorframes, walls, and obstacles ahead.\n\n"
-    "Select the heading that lets the robot pass through most safely without collision.\n"
-    "Output exactly one assigned symbol corresponding to the safest direction."
+    "The 5 yellow trajectory lines on the ground (from leftmost to rightmost) represent the exact physical paths the robot can take for its next move. "
+    "The solid dot at the end of each line marks the precise location the robot will physically reach and stand on after taking that action.\n\n"
+    "You must choose the safest path and output exactly one corresponding symbol:\n"
+    "- Output '°' for the 1st line (Leftmost turn)\n"
+    "- Output '®' for the 2nd line (Slight left turn)\n"
+    "- Output '¬' for the 3rd line (Straight Forward)\n"
+    "- Output '¦' for the 4th line (Slight right turn)\n"
+    "- Output '¯' for the 5th line (Rightmost turn)\n\n"
+    "Crucial Collision Rules:\n"
+    "1. Check the ENTIRE line: If the trajectory line crosses or touches ANY obstacle (furniture legs, walls, debris) on the ground, the robot will collide while moving.\n"
+    "2. Check the END POINT: If the solid dot at the tip of the line lands on or inside an obstacle, the robot will crash into it at the end of the step.\n"
+    "3. Only select a path where BOTH the entire line and its end point lie completely on clear, open, walkable floor.\n\n"
+    "Output exactly one assigned symbol (°, ®, ¬, ¦, or ¯) corresponding to the safest trajectory."
 )
 
 

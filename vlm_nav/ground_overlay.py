@@ -72,9 +72,9 @@ def render_ground_overlay(
     w, h = base.size
 
     traj_len = _TRAJ_LENGTH_FRAC * h
-    anchor_r = max(14, int(round(min(w, h) * _ANCHOR_R_FRAC)))
+    # Use a smaller radius since we are no longer drawing letters inside
+    anchor_r = max(6, int(round(min(w, h) * (_ANCHOR_R_FRAC * 0.5))))
     line_w = max(2, int(round(min(w, h) * _TRAJ_WIDTH_FRAC)))
-    font = _load_font(max(12, int(round(anchor_r * 1.3))))
 
     for action in actions:
         # Use the footprint origin of the agent
@@ -95,20 +95,12 @@ def render_ground_overlay(
             [(origin_x, origin_y), (tip_x, tip_y)],
             fill=(*_TRAJ_COLOR, 220), width=line_w,
         )
-        # Anchor circle.
+        # Simple solid end-point dot.
         draw.ellipse(
             [(tip_x - anchor_r, tip_y - anchor_r),
              (tip_x + anchor_r, tip_y + anchor_r)],
-            fill=(*_ANCHOR_BG, 230),
-            outline=(*_ANCHOR_FG, 255), width=2,
-        )
-        # Letter label.
-        label = action.option_id
-        bbox = font.getbbox(label)
-        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        draw.text(
-            (tip_x - tw / 2.0, tip_y - th / 2.0 - bbox[1]),
-            label, fill=(*_ANCHOR_FG, 255), font=font,
+            fill=(*_TRAJ_COLOR, 255),
+            outline=(*_ANCHOR_BG, 255), width=1,
         )
 
     composited = Image.alpha_composite(base.convert("RGBA"), overlay)
