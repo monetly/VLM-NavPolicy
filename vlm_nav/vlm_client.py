@@ -54,16 +54,16 @@ _DIRECTION_USER = (
     "The 5 yellow trajectory lines on the ground (from leftmost to rightmost) represent the exact physical paths the robot can take for its next move. "
     "The solid dot at the end of each line marks the precise location the robot will physically reach and stand on after taking that action.\n\n"
     "You must choose the safest path and output exactly one corresponding symbol:\n"
-    "- Output '(1)' for the 1st line (Leftmost turn)\n"
-    "- Output '(2)' for the 2nd line (Slight left turn)\n"
-    "- Output '(3)' for the 3rd line (Straight Forward)\n"
-    "- Output '(4)' for the 4th line (Slight right turn)\n"
-    "- Output '(5)' for the 5th line (Rightmost turn)\n\n"
+    "- Output 'A' for the 1st line (Leftmost turn)\n"
+    "- Output 'B' for the 2nd line (Slight left turn)\n"
+    "- Output 'C' for the 3rd line (Straight Forward)\n"
+    "- Output 'D' for the 4th line (Slight right turn)\n"
+    "- Output 'E' for the 5th line (Rightmost turn)\n\n"
     "Crucial Collision Rules:\n"
     "1. Check the ENTIRE line: If the trajectory line crosses or touches ANY obstacle (furniture legs, walls, debris) on the ground, the robot will collide while moving.\n"
     "2. Check the END POINT: If the solid dot at the tip of the line lands on or inside an obstacle, the robot will crash into it at the end of the step.\n"
     "3. Only select a path where BOTH the entire line and its end point lie completely on clear, open, walkable floor.\n\n"
-    "Output exactly one assigned symbol ((1), (2), (3), (4), or (5)) corresponding to the safest trajectory."
+    "Output exactly one assigned letter (A, B, C, D, or E) corresponding to the safest trajectory."
 )
 
 
@@ -224,6 +224,7 @@ class VLMScorer:
             "top_p": 1.0,
             "grammar": grammar,
             "n_probs": 50,
+            "logit_bias": [[32, 1.5476], [33, 1.8274], [34, 1.3196], [35, 2.2815], [36, 1.3585]],
             "post_sampling_probs": True,   # ← grammar-constrained probs
             "cache_prompt": False,
             "seed": self._next_seed(),
