@@ -36,11 +36,18 @@ def _load_font(size: int = 20) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
-def _yaw_deg(action: MacroAction, turn_angle_deg: float) -> float:
-    """Net yaw delta in degrees (negative=left, positive=right)."""
-    left = sum(1 for p in action.primitive_actions if p.strip().lower() in {"turn_left", "l"})
-    right = sum(1 for p in action.primitive_actions if p.strip().lower() in {"turn_right", "r"})
-    return float(right - left) * float(turn_angle_deg)
+def _yaw_deg(action: MacroAction, _turn_angle_deg: float) -> float:
+    """Fixed semantic yaw delta in degrees for ground visualization.
+    A: -60, B: -30, C: 0, D: +30, E: +60
+    """
+    mapping = {
+        "A": -60.0,
+        "B": -30.0,
+        "C": 0.0,
+        "D": 30.0,
+        "E": 60.0,
+    }
+    return mapping.get(action.option_id, 0.0)
 
 
 # ---------------------------------------------------------------------------

@@ -79,15 +79,21 @@ def _forward_steps(primitives: Tuple[str, ...]) -> int:
 
 
 def _tip_xy_from_motion(
-    turn_steps: int,
+    option_id: str,
     forward_steps: int,
-    turn_angle_deg: float,
     forward_step_m: float,
     hfov_deg: float = 79.0,
 ) -> Tuple[float, float]:
-    """Project macro-action endpoint into normalized image coordinates."""
+    """Project macro-action endpoint into normalized image coordinates using fixed visual angles."""
+    mapping = {
+        "A": -60.0,
+        "B": -30.0,
+        "C": 0.0,
+        "D": 30.0,
+        "E": 60.0,
+    }
+    yaw_deg = mapping.get(option_id, 0.0)
     hfov_deg = float(min(max(hfov_deg, 1.0), 179.0))
-    yaw_deg = min(max(float(turn_steps) * float(turn_angle_deg), -89.0), 89.0)
     yaw_rad = math.radians(yaw_deg)
 
     half_hfov_tan = max(1e-6, math.tan(math.radians(hfov_deg * 0.5)))
@@ -107,20 +113,20 @@ def _tip_xy_from_motion(
 
 def recompute_tips(
     actions: Iterable[MacroAction],
-    turn_angle_deg: float,
+    turn_angle_deg: float,  # kept for signature compatibility, but unused for yaw
     forward_step_m: float,
     hfov_deg: float = 79.0,
 ) -> Tuple[MacroAction, ...]:
-    """Rebuild actions with tip points aligned to current config values."""
+    """Rebuild actions with tip points aligned to fixed visual angles."""
     return tuple(
         MacroAction(
             option_id=a.option_id,
             action_name=a.action_name,
             primitive_actions=a.primitive_actions,
             tip_xy_norm=_tip_xy_from_motion(
-                _turn_steps(a.primitive_actions),
+                a.option_id,
                 _forward_steps(a.primitive_actions),
-                turn_angle_deg, forward_step_m, hfov_deg,
+                forward_step_m, hfov_deg,
             ),
         )
         for a in actions
