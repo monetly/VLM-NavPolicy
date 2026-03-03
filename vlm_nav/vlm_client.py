@@ -54,16 +54,16 @@ _DIRECTION_USER = (
     "The 5 yellow trajectory lines on the ground (from leftmost to rightmost) represent the exact physical paths the robot can take for its next move. "
     "The solid dot at the end of each line marks the precise location the robot will physically reach and stand on after taking that action.\n\n"
     "You must choose the safest path and output exactly one corresponding symbol:\n"
-    "- Output 'A' for the 1st line (Leftmost turn)\n"
-    "- Output 'B' for the 2nd line (Slight left turn)\n"
-    "- Output 'C' for the 3rd line (Straight Forward)\n"
-    "- Output 'D' for the 4th line (Slight right turn)\n"
-    "- Output 'E' for the 5th line (Rightmost turn)\n\n"
+    "- Output '(1)' for the 1st line (Leftmost turn)\n"
+    "- Output '(2)' for the 2nd line (Slight left turn)\n"
+    "- Output '(3)' for the 3rd line (Straight Forward)\n"
+    "- Output '(4)' for the 4th line (Slight right turn)\n"
+    "- Output '(5)' for the 5th line (Rightmost turn)\n\n"
     "Crucial Collision Rules:\n"
     "1. Check the ENTIRE line: If the trajectory line crosses or touches ANY obstacle (furniture legs, walls, debris) on the ground, the robot will collide while moving.\n"
     "2. Check the END POINT: If the solid dot at the tip of the line lands on or inside an obstacle, the robot will crash into it at the end of the step.\n"
     "3. Only select a path where BOTH the entire line and its end point lie completely on clear, open, walkable floor.\n\n"
-    "Output exactly one assigned letter (A, B, C, D, or E) corresponding to the safest trajectory."
+    "Output exactly one assigned symbol ((1), (2), (3), (4), or (5)) corresponding to the safest trajectory."
 )
 
 
@@ -218,13 +218,12 @@ class VLMScorer:
                 ),
                 "multimodal_data": [encoded_rgb],
             },
-            "n_predict": 1,
+            "n_predict": 3,
             "temperature": temp,
             "top_k": 0,
             "top_p": 1.0,
             "grammar": grammar,
             "n_probs": 50,
-            "logit_bias": [[32, 1.5476], [33, 1.8274], [34, 1.3196], [35, 2.2815], [36, 1.3585]],
             "post_sampling_probs": True,   # ← grammar-constrained probs
             "cache_prompt": False,
             "seed": self._next_seed(),
@@ -234,6 +233,11 @@ class VLMScorer:
 
     @staticmethod
     def _grammar(ids: Sequence[str]) -> str:
+        # Check if we are using bracketed format (1), (2)...
+        if all(len(s) >= 3 and s.startswith("(") and s.endswith(")") for s in ids):
+            digits = "".join(s[1:-1] for s in ids)
+            return f'root ::= "(" [{digits}] ")"'
+        
         parts = [f'"{s.strip()}"' for s in ids if s.strip()]
         if not parts:
             parts = ['"C"']
@@ -246,19 +250,29 @@ class VLMScorer:
         rj: Dict[str, Any],
         valid_ids: Set[str],
     ) -> Dict[str, float]:
-        """Extract probability distribution from grammar-constrained response.
-
-        With ``post_sampling_probs: true`` the ``top_logprobs`` contain only
-        tokens that survived grammar masking + sampling, so we can directly
-        read the A-E (or Y/N) probabilities.
-        """
         probs = {oid: 0.0 for oid in valid_ids}
+        # Decide which token index to look at. 
+        # For bracketed options (e.g. valid_ids = {"(1)", "(2)"...}), 
+        # if the completion starts with "(", the descriptive info is at index 1.
+        target_index = 0
+        is_bracketed = all(len(oid) >= 3 and oid.startswith("(") and oid.endswith(")") for oid in valid_ids)
+        
+        # Look at the predicted content to see if we should skip the first token
+        content = str(rj.get("content", ""))
+        if is_bracketed and content.startswith("("):
+            target_index = 1
 
-        items = self._top_prob_items(rj)
+        items = self._top_prob_items(rj, index=target_index)
         for item in items:
             tok = str(item.get("token", "")).strip()
-            if tok in valid_ids:
-                probs[tok] += self._item_prob(item)
+            # If we are looking at index 1, token is just "1", map it back to "(1)"
+            if target_index == 1:
+                label = f"({tok})"
+                if label in valid_ids:
+                    probs[label] += self._item_prob(item)
+            else:
+                if tok in valid_ids:
+                    probs[tok] += self._item_prob(item)
 
         # If top_probs yielded nothing, use the content token as last resort.
         if sum(probs.values()) <= 1e-8:
@@ -276,14 +290,14 @@ class VLMScorer:
         return probs
 
     @staticmethod
-    def _top_prob_items(rj: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _top_prob_items(rj: Dict[str, Any], index: int = 0) -> List[Dict[str, Any]]:
         for field in ("probs", "completion_probabilities"):
             val = rj.get(field)
-            if isinstance(val, list) and val:
-                first = val[0]
-                if isinstance(first, dict):
+            if isinstance(val, list) and len(val) > index:
+                target = val[index]
+                if isinstance(target, dict):
                     for key in ("top_probs", "top_logprobs"):
-                        items = first.get(key)
+                        items = target.get(key)
                         if isinstance(items, list):
                             return items
         return []

@@ -23,31 +23,31 @@ class MacroAction:
 
 MACRO_ACTIONS: Tuple[MacroAction, ...] = (
     MacroAction(
-        option_id="A",
+        option_id="(1)",
         action_name="turn_left_twice_then_forward",
         primitive_actions=("turn_left", "turn_left", "move_forward"),
         tip_xy_norm=(0.12, 0.82),
     ),
     MacroAction(
-        option_id="B",
+        option_id="(2)",
         action_name="turn_left_then_forward",
         primitive_actions=("turn_left", "move_forward"),
         tip_xy_norm=(0.30, 0.58),
     ),
     MacroAction(
-        option_id="C",
+        option_id="(3)",
         action_name="forward",
         primitive_actions=("move_forward",),
         tip_xy_norm=(0.50, 0.52),
     ),
     MacroAction(
-        option_id="D",
+        option_id="(4)",
         action_name="turn_right_then_forward",
         primitive_actions=("turn_right", "move_forward"),
         tip_xy_norm=(0.70, 0.58),
     ),
     MacroAction(
-        option_id="E",
+        option_id="(5)",
         action_name="turn_right_twice_then_forward",
         primitive_actions=("turn_right", "turn_right", "move_forward"),
         tip_xy_norm=(0.88, 0.82),
