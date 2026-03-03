@@ -24,7 +24,9 @@ import requests
 from .actions import MacroAction, MACRO_ACTIONS, recompute_tips
 from .config import VLMConfig
 from .entropy import normalize_distribution_generic, shannon_entropy_bits_generic
-from .ground_overlay import DEFAULT_ACTIONS, render_ground_overlay
+from .ground_overlay import (
+    DEFAULT_ACTIONS, render_ground_overlay, render_single_path_overlay,
+)
 
 
 _IMG_TAG = "<__media__>"
@@ -64,6 +66,22 @@ _DIRECTION_USER = (
     "2. Check the END POINT: If the solid dot at the tip of the line lands on or inside an obstacle, the robot will crash into it at the end of the step.\n"
     "3. Only select a path where BOTH the entire line and its end point lie completely on clear, open, walkable floor.\n\n"
     "Output exactly one letter (A, B, C, D, or E) corresponding to the safest trajectory."
+)
+
+# ---------------------------------------------------------------------------
+# Stage 2b: Independent per-path safety evaluation (Y / N)
+# ---------------------------------------------------------------------------
+_PATH_EVAL_SYSTEM = (
+    "You are the visual safety evaluator for an autonomous mobile robot. "
+    "Your task is to determine whether a specific proposed path is safe to travel."
+)
+_PATH_EVAL_USER = (
+    "The bright yellow line and dot on the ground show the robot's proposed path. "
+    "The dot marks where the robot will physically stand after this move.\n\n"
+    "Is this highlighted path safe? Check:\n"
+    "1. Does the yellow line cross or touch any obstacle (furniture, walls, debris)?\n"
+    "2. Does the yellow endpoint dot land on clear, open, walkable floor?\n\n"
+    "Answer only Y (safe, clear path) or N (collision risk)."
 )
 
 
@@ -175,6 +193,68 @@ class VLMScorer:
             return self._mock_score(rgb, actions, str(exc),
                                     return_annotated, annotated)
 
+    def score_direction_independent(
+        self,
+        rgb: np.ndarray,
+        actions: Sequence[MacroAction] = DEFAULT_ACTIONS,
+        turn_angle_deg: float = 30.0,
+        forward_step_m: float = 0.2,
+        camera_height_m: float = 0.6,
+        hfov_deg: float = 79.0,
+        return_annotated: bool = False,
+    ) -> ActionDistribution:
+        """Score directions via independent per-path Y/N safety queries.
+
+        For each of the 5 paths, render it highlighted, ask the VLM
+        'Is this path safe? Y/N', and extract P(Y).  Normalize the 5
+        P(safe) values into a probability distribution.
+        """
+        if rgb.ndim != 3 or rgb.shape[2] < 3:
+            raise ValueError(f"Expected HxWx3, got shape={rgb.shape}")
+
+        actions = recompute_tips(actions, turn_angle_deg, forward_step_m, camera_height_m, hfov_deg)
+        id_to_name = {a.option_id: a.action_name for a in actions}
+
+        p_safe: Dict[str, float] = {}
+        # Also keep the all-paths annotated image for visualization
+        annotated = render_ground_overlay(
+            rgb, actions, turn_angle_deg, forward_step_m, camera_height_m, hfov_deg,
+        )
+
+        for i, action in enumerate(actions):
+            try:
+                single_img = render_single_path_overlay(
+                    rgb, actions, i,
+                    turn_angle_deg, forward_step_m, camera_height_m, hfov_deg,
+                )
+                encoded = self._encode_png(single_img)
+                payload = self._payload_path_eval(encoded)
+                rj = self._post(payload)
+                probs = self._parse_constrained_probs(rj, {"Y", "N"})
+                p_safe[action.option_id] = max(probs.get("Y", 0.5), 1e-6)
+            except Exception:
+                p_safe[action.option_id] = 0.5  # neutral fallback
+
+        # Normalize P(safe) into action distribution
+        prob_by_option = normalize_distribution_generic(p_safe)
+        entropy = shannon_entropy_bits_generic(prob_by_option)
+        selected = max(prob_by_option.items(), key=lambda kv: kv[1])[0]
+
+        prob_by_name: Dict[str, float] = {}
+        for oid, p in prob_by_option.items():
+            name = id_to_name[oid]
+            prob_by_name[name] = prob_by_name.get(name, 0.0) + p
+        prob_by_name = normalize_distribution_generic(prob_by_name)
+
+        return ActionDistribution(
+            prob_by_option=prob_by_option,
+            prob_by_action_name=prob_by_name,
+            entropy=entropy,
+            selected_option=selected,
+            selected_action_name=id_to_name[selected],
+            annotated_rgb=annotated if return_annotated else None,
+        )
+
     # ── Payload builders ──────────────────────────────────────────────
 
     def _payload_safety(self, encoded_rgb: str) -> Dict[str, Any]:
@@ -196,6 +276,29 @@ class VLMScorer:
             "n_probs": self.cfg.n_probs,
             "post_sampling_probs": True,   # ← grammar-constrained probs
             "cache_prompt": False,
+            "seed": self._next_seed(),
+        }
+
+    def _payload_path_eval(self, encoded_rgb: str) -> Dict[str, Any]:
+        """Payload for independent per-path Y/N safety evaluation."""
+        return {
+            "model": self.cfg.model,
+            "prompt": {
+                "prompt_string": (
+                    f"{_PATH_EVAL_SYSTEM}\n\n"
+                    f"Current camera image: {_IMG_TAG}\n\n"
+                    f"{_PATH_EVAL_USER}"
+                ),
+                "multimodal_data": [encoded_rgb],
+            },
+            "n_predict": 1,
+            "temperature": 0.1,
+            "top_k": 2,
+            "top_p": 1.0,
+            "grammar": 'root ::= "Y" | "N"',
+            "n_probs": self.cfg.n_probs,
+            "post_sampling_probs": True,
+            "cache_prompt": True,
             "seed": self._next_seed(),
         }
 
@@ -226,7 +329,7 @@ class VLMScorer:
             "n_probs": 50,
             "logit_bias": [[32, 1.5476], [33, 1.8274], [34, 1.3196], [35, 2.2815], [36, 1.3585]],
             "post_sampling_probs": True,   # ← grammar-constrained probs
-            "cache_prompt": False,
+            "cache_prompt": True,
             "seed": self._next_seed(),
         }
 

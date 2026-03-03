@@ -155,8 +155,8 @@ class NavigationAgent:
                     decisions += 1
                     continue
 
-                # ── Stage 2: direction ──
-                dist = self.scorer.score_direction(
+                # ── Stage 2: direction (independent binary scoring) ──
+                dist = self.scorer.score_direction_independent(
                     rgb, self._actions, self._turn_deg,
                     float(self.cfg.navigation.forward_step_m),
                     float(self.cfg.navigation.camera_height_m),

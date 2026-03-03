@@ -107,6 +107,77 @@ def render_ground_overlay(
     return np.array(composited.convert("RGB"))
 
 
+def render_single_path_overlay(
+    rgb: np.ndarray,
+    actions: Sequence[MacroAction],
+    highlight_index: int,
+    turn_angle_deg: float = 30.0,
+    forward_step_m: float = 0.2,
+    camera_height_m: float = 0.6,
+    hfov_deg: float = 79.0,
+) -> np.ndarray:
+    """Render overlay with one path highlighted and others dimmed.
+
+    The highlighted path is drawn in bright yellow; all other paths are
+    rendered in faint gray for spatial context.  This is used by the
+    independent binary scoring system where each path is evaluated with
+    a separate Y/N VLM query.
+    """
+    if rgb.ndim != 3 or rgb.shape[2] < 3:
+        raise ValueError(f"Expected HxWx3 RGB, got shape={rgb.shape}")
+
+    actions = recompute_tips(actions, turn_angle_deg, forward_step_m, camera_height_m, hfov_deg)
+
+    base = Image.fromarray(rgb[..., :3].astype(np.uint8), mode="RGB")
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    w, h = base.size
+
+    anchor_r = max(6, int(round(min(w, h) * (_ANCHOR_R_FRAC * 0.5))))
+    line_w = max(2, int(round(min(w, h) * _TRAJ_WIDTH_FRAC)))
+
+    _DIM_COLOR = (140, 140, 140)  # Faint gray for non-highlighted paths
+
+    for i, action in enumerate(actions):
+        is_highlight = (i == highlight_index)
+
+        origin_x = action.origin_xy_norm[0] * w
+        origin_y = action.origin_xy_norm[1] * h
+        tip_x = action.tip_xy_norm[0] * w
+        tip_y = action.tip_xy_norm[1] * h
+
+        margin = anchor_r + 4
+        tip_x = max(margin, min(w - margin, tip_x))
+        tip_y = max(margin, min(h - margin, tip_y))
+
+        if is_highlight:
+            # Bright yellow, full opacity, thicker
+            draw.line(
+                [(origin_x, origin_y), (tip_x, tip_y)],
+                fill=(*_TRAJ_COLOR, 240), width=line_w + 2,
+            )
+            draw.ellipse(
+                [(tip_x - anchor_r - 2, tip_y - anchor_r - 2),
+                 (tip_x + anchor_r + 2, tip_y + anchor_r + 2)],
+                fill=(*_TRAJ_COLOR, 255),
+                outline=(*_ANCHOR_BG, 255), width=2,
+            )
+        else:
+            # Dim gray, low opacity
+            draw.line(
+                [(origin_x, origin_y), (tip_x, tip_y)],
+                fill=(*_DIM_COLOR, 80), width=max(1, line_w - 1),
+            )
+            draw.ellipse(
+                [(tip_x - anchor_r + 1, tip_y - anchor_r + 1),
+                 (tip_x + anchor_r - 1, tip_y + anchor_r - 1)],
+                fill=(*_DIM_COLOR, 100),
+            )
+
+    composited = Image.alpha_composite(base.convert("RGBA"), overlay)
+    return np.array(composited.convert("RGB"))
+
+
 # ---------------------------------------------------------------------------
 # Probability visualization panel
 # ---------------------------------------------------------------------------
