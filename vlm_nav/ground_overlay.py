@@ -36,18 +36,11 @@ def _load_font(size: int = 20) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
-def _yaw_deg(action: MacroAction, _turn_angle_deg: float) -> float:
-    """Fixed semantic yaw delta in degrees for ground visualization.
-    A: -60, B: -30, C: 0, D: +30, E: +60
-    """
-    mapping = {
-        "A": -60.0,
-        "B": -30.0,
-        "C": 0.0,
-        "D": 30.0,
-        "E": 60.0,
-    }
-    return mapping.get(action.option_id, 0.0)
+def _yaw_deg(action: MacroAction, turn_angle_deg: float) -> float:
+    """Net yaw delta in degrees (negative=left, positive=right)."""
+    left = sum(1 for p in action.primitive_actions if p.strip().lower() in {"turn_left", "l"})
+    right = sum(1 for p in action.primitive_actions if p.strip().lower() in {"turn_right", "r"})
+    return float(right - left) * float(turn_angle_deg)
 
 
 # ---------------------------------------------------------------------------
@@ -85,10 +78,12 @@ def render_ground_overlay(
     font = _load_font(max(12, int(round(anchor_r * 1.3))))
 
     for action in actions:
-        yaw = _yaw_deg(action, turn_angle_deg)
-        angle_rad = math.radians(yaw)
-        tip_x = origin_x + traj_len * math.sin(angle_rad)
-        tip_y = origin_y - traj_len * math.cos(angle_rad)
+        # Use the physically precise horizontal projection tip_x
+        tip_x_norm = action.tip_xy_norm[0]
+        tip_x = tip_x_norm * w
+        
+        # Use a fixed 2D length from the bottom of the screen to form the fan
+        tip_y = origin_y - traj_len
 
         margin = anchor_r + 4
         tip_x = max(margin, min(w - margin, tip_x))

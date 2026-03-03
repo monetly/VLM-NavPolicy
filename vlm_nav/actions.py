@@ -79,54 +79,40 @@ def _forward_steps(primitives: Tuple[str, ...]) -> int:
 
 
 def _tip_xy_from_motion(
-    option_id: str,
+    turn_steps: int,
     forward_steps: int,
+    turn_angle_deg: float,
     forward_step_m: float,
     hfov_deg: float = 79.0,
 ) -> Tuple[float, float]:
-    """Project macro-action endpoint into normalized image coordinates using fixed visual angles."""
-    mapping = {
-        "A": -60.0,
-        "B": -30.0,
-        "C": 0.0,
-        "D": 30.0,
-        "E": 60.0,
-    }
-    yaw_deg = mapping.get(option_id, 0.0)
+    """Project macro-action endpoint into perspective horizontal coordinate."""
     hfov_deg = float(min(max(hfov_deg, 1.0), 179.0))
+    yaw_deg = min(max(float(turn_steps) * float(turn_angle_deg), -89.0), 89.0)
     yaw_rad = math.radians(yaw_deg)
 
     half_hfov_tan = max(1e-6, math.tan(math.radians(hfov_deg * 0.5)))
     tip_x = 0.5 + 0.5 * (math.tan(yaw_rad) / half_hfov_tan)
 
-    travel_m = max(0.0, float(forward_steps) * float(forward_step_m))
-    if travel_m > 0.0:
-        motion_scale = max(0.0, travel_m / max(1e-6, 0.30))
-        base_dy = max(0.10, min(0.45, 0.28 * max(motion_scale, 0.35)))
-        len_scale = min(max(math.cos(abs(yaw_rad)), 0.2), 1.0)
-        tip_y = 0.999 - base_dy * len_scale
-    else:
-        tip_y = 0.98
-
-    return float(min(max(tip_x, 0.02), 0.98)), float(tip_y)
+    # We only care about x here; ground_overlay determines dynamic tip_y (length).
+    return float(min(max(tip_x, 0.02), 0.98)), 0.0
 
 
 def recompute_tips(
     actions: Iterable[MacroAction],
-    turn_angle_deg: float,  # kept for signature compatibility, but unused for yaw
+    turn_angle_deg: float,
     forward_step_m: float,
     hfov_deg: float = 79.0,
 ) -> Tuple[MacroAction, ...]:
-    """Rebuild actions with tip points aligned to fixed visual angles."""
+    """Rebuild actions with x-tip points conforming strictly to physical projection."""
     return tuple(
         MacroAction(
             option_id=a.option_id,
             action_name=a.action_name,
             primitive_actions=a.primitive_actions,
             tip_xy_norm=_tip_xy_from_motion(
-                a.option_id,
+                _turn_steps(a.primitive_actions),
                 _forward_steps(a.primitive_actions),
-                forward_step_m, hfov_deg,
+                turn_angle_deg, forward_step_m, hfov_deg,
             ),
         )
         for a in actions
