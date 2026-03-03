@@ -52,14 +52,14 @@ _DIRECTION_SYSTEM = (
 )
 _DIRECTION_USER = (
     "The trajectories on the ground represent 5 candidate local headings "
-    "for the robot's next move. The letters at the end of each trajectory "
-    "(L, l, F, r, R) label each option (leftmost to rightmost).\n\n"
+    "for the robot's next move. The symbols at the end of each trajectory "
+    "(°, ®, ¬, ¦, ¯) label each option (leftmost to rightmost).\n\n"
     "Crucial Safety Rules:\n"
     "1. Pay special attention to the lower part of the image (the ground right in front of the robot).\n"
     "2. Strictly avoid any direction where the trajectory touches or crosses obstacles like furniture legs, walls, or debris at the ground level.\n"
     "3. Examine the physical boundaries of doorframes, walls, and obstacles ahead.\n\n"
     "Select the heading that lets the robot pass through most safely without collision.\n"
-    "Output exactly one assigned letter corresponding to the safest direction."
+    "Output exactly one assigned symbol corresponding to the safest direction."
 )
 
 
