@@ -1,0 +1,32 @@
+{
+  "vlm": {
+    "base_url": "http://127.0.0.1:8080",
+    "model": "qwen3-vl",
+    "seed": null,
+    "request_timeout_sec": 60.0,
+    "n_probs": 64,
+    "temperature": -1.0,
+    "top_k": 0,
+    "top_p": 1.0,
+    "online_action_samples": 1,
+    "use_mock_when_unreachable": false
+  },
+  "navigation": {
+    "forward_step_m": 0.4,
+    "scan_angle_deg": 30,
+    "camera_height_m": 0.6,
+    "entropy_threshold": 2.1,
+    "confidence_threshold": 0.35,
+    "max_consecutive_fallbacks": 4
+  },
+  "habitat": {
+    "config_path": "benchmark/nav/objectnav/objectnav_hm3d.yaml",
+    "dataset_data_path": "/home/liuxh/vln/entopo/habitat-lab/data/datasets/objectnav/hm3d/v2/objectnav_hm3d_v2/val_mini/val_mini.json.gz",
+    "dataset_scenes_dir": "/home/liuxh/vln/entopo/habitat-sim/data/versioned_data/hm3d-0.2",
+    "scene_dataset": "/home/liuxh/vln/entopo/habitat-sim/data/versioned_data/hm3d-0.2/hm3d/hm3d_annotated_basis.scene_dataset_config.json",
+    "split": "val",
+    "rgb_width": 512,
+    "rgb_height": 512,
+    "gpu_device_id": 0
+  }
+}
