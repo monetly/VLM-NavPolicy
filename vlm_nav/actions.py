@@ -18,6 +18,7 @@ class MacroAction:
     action_name: str
     primitive_actions: Tuple[str, ...]
     tip_xy_norm: Tuple[float, float]  # Normalized (x,y) for overlay endpoint
+    origin_xy_norm: Tuple[float, float] = (0.5, 1.0) # Normalized (x,y) for starting point
 
 
 MACRO_ACTIONS: Tuple[MacroAction, ...] = (
@@ -50,6 +51,7 @@ MACRO_ACTIONS: Tuple[MacroAction, ...] = (
         action_name="turn_right_twice_then_forward",
         primitive_actions=("turn_right", "turn_right", "move_forward"),
         tip_xy_norm=(0.88, 0.82),
+        origin_xy_norm=(0.5, 1.0),
     ),
 )
 
@@ -83,9 +85,10 @@ def _tip_xy_from_motion(
     forward_steps: int,
     turn_angle_deg: float,
     forward_step_m: float,
+    camera_height_m: float = 0.6,
     hfov_deg: float = 79.0,
-) -> Tuple[float, float]:
-    """Project macro-action endpoint into perspective horizontal coordinate."""
+) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    """Project macro-action origin and endpoint into perspective horizontal coordinate."""
     hfov_deg = float(min(max(hfov_deg, 1.0), 179.0))
     yaw_deg = min(max(float(turn_steps) * float(turn_angle_deg), -89.0), 89.0)
     yaw_rad = math.radians(yaw_deg)
@@ -93,42 +96,67 @@ def _tip_xy_from_motion(
     half_hfov_tan = max(1e-6, math.tan(math.radians(hfov_deg * 0.5)))
     tip_x = 0.5 + 0.5 * (math.tan(yaw_rad) / half_hfov_tan)
 
-    # Perspective depth for visual length:
-    # A physical circle on the ground projects visually to a flattened ellipse.
-    # We scale the length by the physical travel distance and cos(yaw).
+    # Calculate origin footprint based on camera height and FOV
+    # If the camera points straight ahead, distance=0 means origin is straight down.
+    # On the projection plane (y=0.5 relates to horizon, y=1.0 relates to bottom edge ray).
+    # The bottom ray has declination = vfov / 2.
+    # An object at ground distance Z has declination angle theta = atan(camera_height / Z).
+    # y_norm = 0.5 + 0.5 * (tan(theta) / tan(vfov/2))
+    # For Z=0 (the origin), tan(theta) -> infinity, so origin_y -> infinity.
+    # To cap it visually, we place the origin slightly off-screen (e.g. y=1.1 to 1.3).
+    # We calibrate it against an assumed minimum visible distance.
+    origin_y = 1.15
+    origin_x = 0.5
+
     travel_m = max(0.0, float(forward_steps) * float(forward_step_m))
     if travel_m > 0.0:
-        # Scale the visual height proportionally to forward step size.
-        # Calibrated so 0.3m step -> drops tip_y roughly to ~0.75 image height, 
-        # i.e., 25% of the image from the bottom.
-        base_dy = min(0.8, travel_m * 0.8)
-        tip_y = 0.999 - (base_dy * math.cos(yaw_rad))
+        # Distance to tip is `travel_m`
+        # tan(theta_tip) = camera_height_m / travel_m
+        if travel_m > 1e-4:
+            theta_tip_tan = camera_height_m / travel_m
+            # Assuming square pixels, vfov relates to hfov by aspect ratio.
+            # But normally we can approximate half_vfov_tan ~ half_hfov_tan * 0.75 (for 4:3)
+            half_vfov_tan = half_hfov_tan * 0.75
+            tip_y_proj = 0.5 + 0.5 * (theta_tip_tan / half_vfov_tan)
+            tip_y = float(tip_y_proj)
+        else:
+            tip_y = origin_y
     else:
-        tip_y = 0.98
+        tip_y = origin_y
 
-    return float(min(max(tip_x, 0.02), 0.98)), float(max(0.05, min(tip_y, 0.98)))
+    return (
+        # origin (x, y)
+        (float(origin_x), float(origin_y)),
+        # tip (x, y)
+        (float(min(max(tip_x, 0.02), 0.98)), float(max(0.05, tip_y)))
+    )
 
 
 def recompute_tips(
     actions: Iterable[MacroAction],
     turn_angle_deg: float,
     forward_step_m: float,
+    camera_height_m: float = 0.6,
     hfov_deg: float = 79.0,
 ) -> Tuple[MacroAction, ...]:
     """Rebuild actions with x-tip points conforming strictly to physical projection."""
-    return tuple(
-        MacroAction(
-            option_id=a.option_id,
-            action_name=a.action_name,
-            primitive_actions=a.primitive_actions,
-            tip_xy_norm=_tip_xy_from_motion(
-                _turn_steps(a.primitive_actions),
-                _forward_steps(a.primitive_actions),
-                turn_angle_deg, forward_step_m, hfov_deg,
-            ),
+    result = []
+    for a in actions:
+        origin_xy, tip_xy = _tip_xy_from_motion(
+            _turn_steps(a.primitive_actions),
+            _forward_steps(a.primitive_actions),
+            turn_angle_deg, forward_step_m, camera_height_m, hfov_deg,
         )
-        for a in actions
-    )
+        result.append(
+            MacroAction(
+                option_id=a.option_id,
+                action_name=a.action_name,
+                primitive_actions=a.primitive_actions,
+                tip_xy_norm=tip_xy,
+                origin_xy_norm=origin_xy,
+            )
+        )
+    return tuple(result)
 
 
 # ---------------------------------------------------------------------------

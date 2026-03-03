@@ -124,6 +124,7 @@ class VLMScorer:
         actions: Sequence[MacroAction] = DEFAULT_ACTIONS,
         turn_angle_deg: float = 30.0,
         forward_step_m: float = 0.2,
+        camera_height_m: float = 0.6,
         hfov_deg: float = 79.0,
         return_annotated: bool = False,
     ) -> ActionDistribution:
@@ -131,13 +132,13 @@ class VLMScorer:
         if rgb.ndim != 3 or rgb.shape[2] < 3:
             raise ValueError(f"Expected HxWx3, got shape={rgb.shape}")
 
-        actions = recompute_tips(actions, turn_angle_deg, forward_step_m, hfov_deg)
+        actions = recompute_tips(actions, turn_angle_deg, forward_step_m, camera_height_m, hfov_deg)
         option_ids = [a.option_id for a in actions]
         option_set = set(option_ids)
         id_to_name = {a.option_id: a.action_name for a in actions}
 
         annotated = render_ground_overlay(
-            rgb, actions, turn_angle_deg, forward_step_m, hfov_deg,
+            rgb, actions, turn_angle_deg, forward_step_m, camera_height_m, hfov_deg,
         )
         encoded = self._encode_png(annotated)
 

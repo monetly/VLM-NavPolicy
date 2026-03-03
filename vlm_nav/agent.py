@@ -159,6 +159,7 @@ class NavigationAgent:
                 dist = self.scorer.score_direction(
                     rgb, self._actions, self._turn_deg,
                     float(self.cfg.navigation.forward_step_m),
+                    float(self.cfg.navigation.camera_height_m),
                     return_annotated=True,
                 )
                 vlm_calls += 1

@@ -52,32 +52,34 @@ def render_ground_overlay(
     actions: Sequence[MacroAction] = DEFAULT_ACTIONS,
     turn_angle_deg: float = 30.0,
     forward_step_m: float = 0.2,
+    camera_height_m: float = 0.6,
     hfov_deg: float = 79.0,
 ) -> np.ndarray:
-    """Draw fan-shaped ground trajectory lines with A-E anchor labels.
+    """Draw perspective-correct ground trajectory lines with A-E anchor labels.
 
-    Origin: bottom-center of image (camera position).
-    Each line extends upward at the yaw angle of the corresponding action.
+    Origin: True projection of the agent's floor footprint based on camera height.
+    Each line extends upward to the projected endpoint of the action trajectory.
     Endpoint: high-contrast circle with letter label.
     """
     if rgb.ndim != 3 or rgb.shape[2] < 3:
         raise ValueError(f"Expected HxWx3 RGB, got shape={rgb.shape}")
 
-    actions = recompute_tips(actions, turn_angle_deg, forward_step_m, hfov_deg)
+    actions = recompute_tips(actions, turn_angle_deg, forward_step_m, camera_height_m, hfov_deg)
 
     base = Image.fromarray(rgb[..., :3].astype(np.uint8), mode="RGB")
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     w, h = base.size
 
-    origin_x = w / 2.0
-    origin_y = float(h) - 1.0
     traj_len = _TRAJ_LENGTH_FRAC * h
     anchor_r = max(14, int(round(min(w, h) * _ANCHOR_R_FRAC)))
     line_w = max(2, int(round(min(w, h) * _TRAJ_WIDTH_FRAC)))
     font = _load_font(max(12, int(round(anchor_r * 1.3))))
 
     for action in actions:
+        # Use the footprint origin of the agent
+        origin_x = action.origin_xy_norm[0] * w
+        origin_y = action.origin_xy_norm[1] * h
         # Use the physically precise horizontal projection tip_x
         tip_x = action.tip_xy_norm[0] * w
         

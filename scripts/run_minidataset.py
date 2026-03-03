@@ -125,6 +125,7 @@ def main() -> None:
         dist = scorer.score_direction(
             rgb, return_annotated=args.save_images,
             turn_angle_deg=turn_deg, forward_step_m=fwd_m,
+            camera_height_m=float(exp_cfg.navigation.camera_height_m),
         )
 
         frame = f"{idx+1:03d}_{Path(row['path']).stem}.png"
